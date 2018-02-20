@@ -1,0 +1,12 @@
+build:
+	gcc ./src/server.c -o ./server.out
+
+fmt:
+	find . -name "*.c" -o -name "*.h" | \
+		xargs clang-format -style=file -i
+
+clean:
+	find . -name "*.out" -type f -delete
+
+
+.PHONY: fmt clean
