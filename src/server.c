@@ -13,8 +13,33 @@ listen_for_connections()
 {
 	int err = 0;
 	int listen_fd;
-	struct sockaddr_in server_addr;
+	struct sockaddr_in server_addr = { 0 };
 
+	// `sockaddr_in` provides ways of representing a full address
+	// composed of an IP address and a port.
+	//
+	// SIN_FAMILY   address family          AF_INET refers to the address
+	//                                      family related to internet
+	//                                      addresses
+	//
+	// S_ADDR       address (ip) in network byte order (big endian)
+	// SIN_PORT     port in network byte order (big endian)
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	server_addr.sin_port = htons(PORT);
+
+	// The `socket(2)` syscall creates an endpoint for communication
+	// and returns a file descriptor that refers to that endpoint.
+	//
+	// It takes three arguments (the last being just to provide greater
+	// specificity):
+	// -    domain (communication domain)
+	//      AF_INET              IPv4 Internet protocols
+	//
+	// -    type (communication semantics)
+	//      SOCK_STREAM          Provides sequenced, reliable,
+	//                           two-way, connection-based byte
+	//                           streams.
 	err = (listen_fd = socket(AF_INET, SOCK_STREAM, 0));
 	if (err == -1) {
 		perror("socket");
@@ -22,24 +47,21 @@ listen_for_connections()
 		return err;
 	}
 
-	memset(&server_addr, sizeof(server_addr), 0);
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	server_addr.sin_port = htons(PORT);
-
+	// bind() assigns the address specified to the socket referred to by
+	// the file descriptor (`listen_fd`).
 	err =
 	  bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
 	if (err == -1) {
 		perror("bind");
 		printf("Failed to bind socket to address\n");
-		return 1;
+		return err;
 	}
 
 	err = listen(listen_fd, BACKLOG);
 	if (err == -1) {
 		perror("listen");
 		printf("Failed to put socket in passive mode\n");
-		return 1;
+		return err;
 	}
 
 	for (;;) {
@@ -55,7 +77,7 @@ listen_for_connections()
 		if (err == -1) {
 			perror("accept");
 			printf("failed accepting connection\n");
-			return 1;
+			return err;
 		}
 
 		printf("Client connected!\n");
@@ -64,7 +86,7 @@ listen_for_connections()
 		if (err == -1) {
 			perror("close");
 			printf("failed to close connection\n");
-			return 1;
+			return err;
 		}
 	}
 
