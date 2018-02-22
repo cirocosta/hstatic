@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 
 #define PORT 8080
-#define BACKLOG 128
+#define BACKLOG 4
 
 /**
  * Encapsulates the properties of the server.
@@ -75,9 +75,9 @@ server_listen(server_t* server)
 	// `sockaddr_in` provides ways of representing a full address
 	// composed of an IP address and a port.
 	//
-	// SIN_FAMILY   address family          AF_INET refers to the address
-	//                                      family related to internet
-	//                                      addresses
+	// SIN_FAMILY   address family          AF_INET refers to the
+	//                                      address family related to
+	//                                      internet addresses
 	//
 	// S_ADDR       address (ip) in network byte order (big endian)
 	// SIN_PORT     port in network byte order (big endian)
@@ -88,8 +88,8 @@ server_listen(server_t* server)
 	// The `socket(2)` syscall creates an endpoint for communication
 	// and returns a file descriptor that refers to that endpoint.
 	//
-	// It takes three arguments (the last being just to provide greater
-	// specificity):
+	// It takes three arguments (the last being just to provide
+	// greater specificity):
 	// -    domain (communication domain)
 	//      AF_INET              IPv4 Internet protocols
 	//
@@ -104,8 +104,12 @@ server_listen(server_t* server)
 		return err;
 	}
 
-	// bind() assigns the address specified to the socket referred to by
-	// the file descriptor (`listen_fd`).
+	// bind() assigns the address specified to the socket referred
+	// to by the file descriptor (`listen_fd`).
+	//
+	// Here we cast `sockaddr_in` to `sockaddr` and specify the
+	// length such that `bind` can pick the values from the
+	// right offsets when interpreting the structure pointed to.
 	err = bind(server->listen_fd,
 	           (struct sockaddr*)&server_addr,
 	           sizeof(server_addr));
@@ -115,15 +119,17 @@ server_listen(server_t* server)
 		return err;
 	}
 
-	// listen() marks the socket referred to by sockfd as a passive socket,
-	// that is, as a socket that will be used to accept incoming connection
-	// requests using accept(2).
+	// listen() marks the socket referred to by sockfd as a
+	// passive socket, that is, as a socket that will be used to accept
+	// incoming connection requests using accept(2).
 	err = listen(server->listen_fd, BACKLOG);
 	if (err == -1) {
 		perror("listen");
 		printf("Failed to put socket in passive mode\n");
 		return err;
 	}
+
+	pause();
 
 	return 0;
 }
