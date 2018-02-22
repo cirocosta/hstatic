@@ -129,8 +129,6 @@ server_listen(server_t* server)
 		return err;
 	}
 
-	pause();
-
 	return 0;
 }
 
