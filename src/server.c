@@ -1,8 +1,5 @@
 #include "./server.h"
 
-#define PORT 8080
-#define BACKLOG 4
-
 int
 server_accept(server_t* server)
 {
@@ -13,6 +10,12 @@ server_accept(server_t* server)
 
 	client_len = sizeof(client_addr);
 
+	// accept(2) extracts the first connection request on the queue
+	// of pending connections for the listening socket, sockfd,
+	// creates a new connected socket, and returns a new file descriptor
+	// referring to that socket.
+	//
+	// ps.:  the original socket sockfd is unaffected by this call.
 	err =
 	  (conn_fd = accept(
 	     server->listen_fd, (struct sockaddr*)&client_addr, &client_len));
@@ -21,8 +24,6 @@ server_accept(server_t* server)
 		printf("failed accepting connection\n");
 		return err;
 	}
-
-	printf("Client connected!\n");
 
 	err = close(conn_fd);
 	if (err == -1) {

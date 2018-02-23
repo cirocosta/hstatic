@@ -9,6 +9,16 @@
 #include <sys/socket.h>
 
 /**
+ * Port to bind to by default
+ */
+#define PORT 8080
+
+/**
+ * Size of the listen backlog
+ */
+#define BACKLOG 4
+
+/**
  * Encapsulates the properties of the server.
  */
 typedef struct server {
