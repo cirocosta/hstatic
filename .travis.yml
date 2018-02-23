@@ -1,0 +1,9 @@
+sudo: false
+
+language: 'c'
+
+before_script:
+  - 'make build'
+
+script:
+  - 'make test'

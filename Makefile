@@ -8,5 +8,8 @@ fmt:
 clean:
 	find . -name "*.out" -type f -delete
 
+test:
+	true
 
-.PHONY: fmt clean
+
+.PHONY: fmt clean test
