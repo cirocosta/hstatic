@@ -1,31 +1,8 @@
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/socket.h>
+#include "./server.h"
 
 #define PORT 8080
 #define BACKLOG 4
 
-/**
- * Encapsulates the properties of the server.
- */
-typedef struct server {
-	// file descriptor of the socket in passive
-	// mode to wait for connections.
-	int listen_fd;
-} server_t;
-
-/**
- * Accepts new connections and then prints `Hello World` to
- * them.
- *
- * Given that a `server_t` has already been initialized,
- * it accepts a connection by `accept`ing on that socket.
- *
- * Note.: this method blocks until a single client is connected.
- */
 int
 server_accept(server_t* server)
 {
@@ -57,15 +34,6 @@ server_accept(server_t* server)
 	return err;
 }
 
-/**
- * Creates a socket for the server and makes it passive such that
- * we can wait for connections on it later.
- *
- * It uses `INADDR_ANY` (0.0.0.0) to bind to all the interfaces
- * available.
- *
- * The port is defined at compile time via the PORT definition.
- */
 int
 server_listen(server_t* server)
 {
@@ -127,40 +95,6 @@ server_listen(server_t* server)
 		perror("listen");
 		printf("Failed to put socket in passive mode\n");
 		return err;
-	}
-
-	return 0;
-}
-
-/**
- * Main server routine.
- *
- *      -       instantiates a new server structure that holds the
- *              properties of our server;
- *      -       creates a socket and makes it passive with
- *              `server_listen`;
- *      -       accepts new connections on the server socket.
- *
- */
-int
-main()
-{
-	int err = 0;
-
-	server_t server = { 0 };
-
-	err = server_listen(&server);
-	if (err) {
-		printf("Failed to listen on address :8080\n");
-		return err;
-	}
-
-	for (;;) {
-		err = server_accept(&server);
-		if (err) {
-			printf("Failed accepting connection\n");
-			return err;
-		}
 	}
 
 	return 0;

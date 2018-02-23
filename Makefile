@@ -1,5 +1,7 @@
-build:
-	gcc ./src/server.c -o ./server.out
+SRCS := $(shell find ./src/*.c)
+
+build: $(SRCS)
+	gcc $^ -o ./server.out
 
 fmt:
 	find . -name "*.c" -o -name "*.h" | \
