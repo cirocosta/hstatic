@@ -25,6 +25,22 @@ server_accept(server_t* server)
 		return err;
 	}
 
+	connection_t conn = {
+		.client_fd = conn_fd,
+	};
+
+	if (server->connection_handler == NULL) {
+		err = -1;
+		printf("connection_handler must be specified\n");
+		return err;
+	}
+
+	err = server->connection_handler(&conn);
+	if (err) {
+		printf("failed to handle connection\n");
+		return err;
+	}
+
 	err = close(conn_fd);
 	if (err == -1) {
 		perror("close");
