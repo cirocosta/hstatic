@@ -1,4 +1,4 @@
-#include "./server.h"
+#include "../src/server.h"
 
 const char* http_response = "HTTP/1.1 200 Ok\r\n"
                             "Content-Length: 2\r\n"

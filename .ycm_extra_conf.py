@@ -8,6 +8,7 @@ flags = [
 '-Wno-missing-field-initializers',
 '-fexceptions',
 '-DNDEBUG',
+'-D_GNU_SOURCE',
 '-std=c99',
 '-xc',
 '-I/usr/lib/',
