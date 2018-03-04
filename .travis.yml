@@ -6,8 +6,8 @@ addons:
   apt:
     sources:
       - 'ubuntu-toolchain-r-test'
-  packages:
-    - 'gcc-7'
+    packages:
+      - 'gcc-7'
 
 before_install:
   - 'export CC=gcc-7'
