@@ -1,8 +1,9 @@
+CFLAGS := -std=gnu99
 SRCS := $(shell find ./src/*.c)
 TESTS := $(shell find ./tests/*.c)
 
 build: ./cmd/main.c $(SRCS)
-	gcc -Wall $^ -o ./server.out
+	gcc $(CFLAGS) -Wall $^ -o ./server.out
 
 fmt:
 	find . -name "*.c" -o -name "*.h" | \
@@ -13,7 +14,7 @@ clean:
 
 test: $(TESTS)
 	@for test in $(TESTS); do \
-		gcc $(SRCS) -g $$test -o $$test.out ; \
+		gcc $(CFLAGS) $(SRCS) -g $$test -o $$test.out ; \
 		$$test.out ; \
 	done
 

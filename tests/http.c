@@ -45,7 +45,7 @@ test_case_t test_cases[] = {
 	    },
 	},
 	{
-	  .description = "parses accordingly",
+	  .description = "parses method and path",
 	  .request_line = "GET /path HTTP/1.1\r\n",
 	  .request_length = 20,
 	  .expected_response = 0,
