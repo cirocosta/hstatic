@@ -41,22 +41,4 @@ typedef struct http_request {
 int
 http_parse_request(http_request_t* dst, char req[], size_t n);
 
-static int
-http_request_equals(http_request_t* a, http_request_t* b)
-{
-	int ok = a->error == b->error && a->method == b->method &&
-	         a->path_len == b->path_len;
-	if (!ok) {
-		return ok;
-	}
-
-	if (a->path_len != 0) {
-		ok = !(strncmp(a->path, b->path, a->path_len));
-	} else if (b->path_len != 0) {
-		ok = !(strncmp(a->path, b->path, b->path_len));
-	}
-
-	return ok;
-}
-
 #endif

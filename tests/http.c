@@ -12,6 +12,24 @@ typedef struct test_case {
 	int expected_response;
 } test_case_t;
 
+static int
+http_request_equals(http_request_t* a, http_request_t* b)
+{
+	int ok = a->error == b->error && a->method == b->method &&
+	         a->path_len == b->path_len;
+	if (!ok) {
+		return ok;
+	}
+
+	if (a->path_len != 0) {
+		ok = !(strncmp(a->path, b->path, a->path_len));
+	} else if (b->path_len != 0) {
+		ok = !(strncmp(a->path, b->path, b->path_len));
+	}
+
+	return ok;
+}
+
 test_case_t test_cases[] = {
 	{
 	  .description = "invalid request if 0 length",
