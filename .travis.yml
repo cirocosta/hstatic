@@ -9,8 +9,8 @@ addons:
   packages:
     - 'gcc-7'
 
-env:
-  - 'CC=gcc-7'
+before_install:
+  - 'export CC=gcc-7'
 
 before_script:
   - 'make build'
