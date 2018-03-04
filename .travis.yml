@@ -3,15 +3,14 @@ sudo: false
 language: 'c'
 
 addons:
-	apt:
-		sources:
-			- 'ubuntu-toolchain-r-test'
-		packages:
-			- 'gcc-7'
+  apt:
+    sources:
+      - 'ubuntu-toolchain-r-test'
+  packages:
+    - 'gcc-7'
 
 env:
-	- 'CC=gcc-7'
-
+  - 'CC=gcc-7'
 
 before_script:
   - 'make build'
