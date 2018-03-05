@@ -22,10 +22,10 @@ typedef enum http_method {
  * Represents a parsed HTTP request.
  */
 typedef struct http_request {
-	http_error_e error;
+	http_error_e  error;
 	http_method_e method;
-	char* path;
-	size_t path_len;
+	char*         path;
+	size_t        path_len;
 } http_request_t;
 
 /**

@@ -38,7 +38,7 @@ http_handler(connection_t* conn)
 int
 main()
 {
-	int err = 0;
+	int      err    = 0;
 	server_t server = {
 		.connection_handler = &http_handler,
 	};

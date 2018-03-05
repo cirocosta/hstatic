@@ -2,6 +2,7 @@
 #define __SERVER_H
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -9,19 +10,20 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/epoll.h>
 #include <sys/socket.h>
 
 #include "./connection.h"
 
 /**
- * Port to bind to by default
+ * Custom configuration parameters.
+ *
+ * Check the Makefile at the root of the
+ * repository to know more.
  */
-#define PORT 8080
-
-/**
- * Size of the listen backlog
- */
-#define BACKLOG 4
+#define HSTATIC_EPOLL_EVENTS 64
+#define HSTATIC_PORT 8080
+#define HSTATIC_TCP_BACKLOG 4
 
 /**
  * Encapsulates the properties of the server.

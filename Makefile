@@ -1,8 +1,36 @@
 CC ?= gcc
 CFLAGS := -std=gnu99
 
+# HSTATIC_PORT defines the port that the server should
+# listen to.
+#
+# Make sure you specify a port that you have privileges to
+# (ports <1024 need extra privileges).
+HSTATIC_PORT =
+ifneq ($(HSTATIC_PORT),)
+CFLAGS += -DHSTATIC_PORT=$(HSTATIC_PORT)
+endif
 
-# Internal varriables
+# HSTATIC_EPOLL_EVENTS defines the maximum number of epoll
+# events.
+#
+# This setting is only relevant if HSTATIC_NONBLOCKING is
+# also set (defaults to false).
+HSTATIC_EPOLL_EVENTS =
+ifneq ($(HSTATIC_EPOLL_EVENTS),)
+CFLAGS += -DHSTATIC_EPOLL_EVENTS=$(HSTATIC_EPOLL_EVENTS)
+endif
+
+# HSTATIC_NOBLOCKING defines whether nonblocking mode should be
+# activated.
+HSTATIC_NONBLOCKING =
+ifneq ($(HSTATIC_NONBLOCKING),)
+CFLAGS += -DHSTATIC_NONBLOCKING
+endif
+
+
+
+# Internal varriables.
 #
 # SRCS contains the list of all `.c` sources
 # found under `./src`.
