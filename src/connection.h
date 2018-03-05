@@ -1,6 +1,7 @@
 #ifndef __CONNECTION_H
 #define __CONNECTION_H
 
+#include <stdio.h>
 #include <unistd.h>
 
 /**

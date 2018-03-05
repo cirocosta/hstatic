@@ -2,6 +2,8 @@
 #define __SERVER_H
 
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +27,10 @@
  * Encapsulates the properties of the server.
  */
 typedef struct server {
+	// Defines whether the server is meant to perform
+	// all operations in a non-blocking manner.
+	bool non_blocking;
+
 	// file descriptor of the socket in passive
 	// mode to wait for connections.
 	int listen_fd;
@@ -45,6 +51,13 @@ typedef struct server {
  */
 int
 server_accept(server_t* server);
+
+/**
+ * Accepts connections and processes them using the handler specfied
+ * in the server struct.
+ */
+int
+server_serve(server_t* server);
 
 /**
  * Creates a socket for the server and makes it passive such that

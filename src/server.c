@@ -1,5 +1,50 @@
 #include "./server.h"
 
+/**
+ * Turns a socket into non-blocking by changing
+ * its flags using `fcntl`.
+ */
+int
+_make_socket_nonblocking(int socket)
+{
+	int err = 0;
+	int flags;
+
+	err = (flags = fcntl(socket, F_GETFL, 0));
+	if (err == -1) {
+		perror("fcntl");
+		printf("failed to retrieve socket flags\n");
+		return -1;
+	}
+
+	flags |= O_NONBLOCK;
+
+	err = fcntl(socket, F_SETFL, flags);
+	if (err == -1) {
+		perror("fcntl");
+		printf("failed to set socket flags\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+server_serve(server_t* server)
+{
+	int err = 0;
+
+	for (;;) {
+		err = server_accept(server);
+		if (err) {
+			printf("failed accepting connection\n");
+			return err;
+		}
+	}
+
+	return err;
+}
+
 int
 server_accept(server_t* server)
 {
@@ -102,6 +147,17 @@ server_listen(server_t* server)
 		perror("bind");
 		printf("Failed to bind socket to address\n");
 		return err;
+	}
+
+	if (server->non_blocking) {
+		// Makes the server socket non-blocking such that calls that
+		// would block return a -1 with EAGAIN or EWOULDBLOCK and
+		// return immediately.
+		err = _make_socket_nonblocking(server->listen_fd);
+		if (err) {
+			printf("failed to make server socket nonblocking\n");
+			return err;
+		}
 	}
 
 	// listen() marks the socket referred to by sockfd as a

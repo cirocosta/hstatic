@@ -1,12 +1,15 @@
 #include "../src/server.h"
 
 const char* http_response = "HTTP/1.1 200 Ok\r\n"
-                            "Content-Length: 2\r\n"
+                            "Content-Length: 4\r\n"
                             "\r\n"
                             "OK\r\n";
 
 size_t http_response_len = 42;
 
+/**
+ * TODO take the payload up to N and then process it.
+ */
 int
 http_handler(connection_t* conn)
 {
@@ -46,12 +49,10 @@ main()
 		return err;
 	}
 
-	for (;;) {
-		err = server_accept(&server);
-		if (err) {
-			printf("Failed accepting connection\n");
-			return err;
-		}
+	err = server_serve(&server);
+	if (err) {
+		printf("Failed serving\n");
+		return err;
 	}
 
 	return 0;
