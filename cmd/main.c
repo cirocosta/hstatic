@@ -1,6 +1,26 @@
 #include "../src/http.h"
 #include "../src/server.h"
 
+#include <signal.h>
+
+server_t* server;
+
+void
+sig_handler(int signo __attribute__((unused)))
+{
+	int err;
+
+	if (server == NULL) {
+		exit(0);
+	}
+
+	err = server_destroy(server);
+	if (err) {
+		printf("errored while gracefully destroying server\n");
+		exit(err);
+	}
+}
+
 /**
  * Main server routine.
  *
@@ -16,8 +36,14 @@ main()
 {
 	int err = 0;
 
-	server_t* server = server_create(&http_handler);
+	if (signal(SIGINT, sig_handler) == SIG_ERR ||
+	    signal(SIGTERM, sig_handler) == SIG_ERR) {
+		perror("signal");
+		printf("failed to install termination signal handler\n");
+		return 1;
+	}
 
+	server = server_create(&http_handler);
 	if (server == NULL) {
 		printf("failed to instantiate server\n");
 		return 1;
