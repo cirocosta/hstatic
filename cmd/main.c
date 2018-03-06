@@ -1,10 +1,6 @@
 #include "../src/http.h"
 #include "../src/server.h"
 
-server_t server = {
-	.connection_handler = &http_handler,
-};
-
 /**
  * Main server routine.
  *
@@ -20,16 +16,29 @@ main()
 {
 	int err = 0;
 
-	err = server_listen(&server);
+	server_t* server = server_create(&http_handler);
+
+	if (server == NULL) {
+		printf("failed to instantiate server\n");
+		return 1;
+	}
+
+	err = server_listen(server);
 	if (err) {
 		printf("Failed to listen on address :8080\n");
 		return err;
 	}
 
-	err = server_serve(&server);
+	err = server_serve(server);
 	if (err) {
 		printf("Failed serving\n");
 		return err;
+	}
+
+	err = server_destroy(server);
+	if (err) {
+		printf("failed to destroy server\n");
+		return 1;
 	}
 
 	return 0;

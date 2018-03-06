@@ -1,5 +1,63 @@
 #include "./server.h"
 
+server_t*
+server_create(connection_handler handler)
+{
+	server_t*     server;
+	connection_t* conn;
+
+	if (handler == NULL) {
+		printf("handler must be specified\n");
+		return NULL;
+	}
+
+	conn = connection_create(CONNECTION_TYPE_SERVER);
+	if (conn == NULL) {
+		printf("failed to create server connection\n");
+		return NULL;
+	}
+
+	server = malloc(sizeof(*server));
+	if (server == NULL) {
+		perror("malloc");
+		printf("failed to allocate memory for server struct\n");
+		return NULL;
+	}
+
+	server->epoll_fd           = -1;
+	server->conn               = conn;
+	server->connection_handler = handler;
+
+	return server;
+}
+
+int
+server_destroy(server_t* server)
+{
+	int err = 0;
+
+	if (server->conn != NULL) {
+		err = connection_destroy(server->conn);
+		if (err) {
+			printf("failed to destroy server connection\n");
+			return err;
+		}
+	}
+
+	if (server->epoll_fd != -1) {
+		err = close(server->epoll_fd);
+		if (err == -1) {
+			perror("close");
+			printf("failed to close server epoll fd\n");
+			return err;
+		}
+	}
+
+	free(server);
+
+	return -1;
+}
+
 /**
  * Turns a socket into non-blocking by changing
  * its flags using `fcntl`.
@@ -44,7 +102,7 @@ _accept_all(server_t* server)
 	int                err;
 
 	while (1) {
-		in_fd = accept(server->listen_fd, &in_addr, &in_len);
+		in_fd = accept(server->conn->fd, &in_addr, &in_len);
 		if (in_fd == -1) {
 			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
 				return 0;
@@ -67,7 +125,6 @@ _accept_all(server_t* server)
 
 		conn->fd = in_fd;
 
-		// TODO instead of putting just the fd, put a connection_t
 		event.data.ptr = conn;
 		event.events   = EPOLLIN | EPOLLET;
 
@@ -91,15 +148,6 @@ server_serve(server_t* server)
 
 	struct epoll_event event = { 0 };
 	struct epoll_event events[HSTATIC_EPOLL_EVENTS];
-	connection_t*      server_connection =
-	  connection_create(CONNECTION_TYPE_SERVER);
-
-	if (server_connection == NULL) {
-		printf("failed to instantiate memory for server connection\n");
-		return -1;
-	}
-
-	server_connection->fd = server->listen_fd;
 
 	// creates a new epoll instance and returns a file
 	// descriptor referring to that instance.
@@ -120,10 +168,10 @@ server_serve(server_t* server)
 	// on the epoll instance referred to by the file descriptor
 	// epoll_fd and associate the event `event` with the internal file
 	// linked to epoll_fd.
-	event.data.ptr = server_connection;
+	event.data.ptr = server->conn;
 	event.events   = EPOLLIN | EPOLLET;
 
-	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->listen_fd, &event);
+	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->conn->fd, &event);
 	if (err == -1) {
 		perror("epoll_ctl");
 		printf("failed to add listen socket to epoll event");
@@ -185,6 +233,7 @@ server_serve(server_t* server)
 				continue;
 			}
 
+			// TODO handle possible errors?
 			server->connection_handler(events[i].data.ptr);
 		}
 	}
@@ -223,7 +272,7 @@ server_listen(server_t* server)
 	//      SOCK_STREAM          Provides sequenced, reliable,
 	//                           two-way, connection-based byte
 	//                           streams.
-	err = (server->listen_fd = socket(AF_INET, SOCK_STREAM, 0));
+	err = (server->conn->fd = socket(AF_INET, SOCK_STREAM, 0));
 	if (err == -1) {
 		perror("socket");
 		printf("Failed to create socket endpoint\n");
@@ -236,7 +285,7 @@ server_listen(server_t* server)
 	// Here we cast `sockaddr_in` to `sockaddr` and specify the
 	// length such that `bind` can pick the values from the
 	// right offsets when interpreting the structure pointed to.
-	err = bind(server->listen_fd,
+	err = bind(server->conn->fd,
 	           (struct sockaddr*)&server_addr,
 	           sizeof(server_addr));
 	if (err == -1) {
@@ -248,7 +297,7 @@ server_listen(server_t* server)
 	// Makes the server socket non-blocking such that calls that
 	// would block return a -1 with EAGAIN or EWOULDBLOCK and
 	// return immediately.
-	err = _make_socket_nonblocking(server->listen_fd);
+	err = _make_socket_nonblocking(server->conn->fd);
 	if (err) {
 		printf("failed to make server socket nonblocking\n");
 		return err;
@@ -257,7 +306,7 @@ server_listen(server_t* server)
 	// listen() marks the socket referred to by sockfd as a
 	// passive socket, that is, as a socket that will be used to accept
 	// incoming connection requests using accept(2).
-	err = listen(server->listen_fd, HSTATIC_TCP_BACKLOG);
+	err = listen(server->conn->fd, HSTATIC_TCP_BACKLOG);
 	if (err == -1) {
 		perror("listen");
 		printf("Failed to put socket in passive mode\n");

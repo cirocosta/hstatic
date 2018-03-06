@@ -33,18 +33,27 @@ typedef struct server {
 	// an `epoll_creaet` op.
 	int epoll_fd;
 
-	// file descriptor of the socket in passive
-	// mode to wait for connections.
-	int listen_fd;
+	// server connection that holds the underlying passive
+	// socket where connections get accepted from.
+	connection_t* conn;
 
 	// callback to execute whenever a new connection
 	// is accepted.
 	connection_handler connection_handler;
 } server_t;
 
-// TODO implement
+/**
+ * Destroys the instantiated server, freeing all of its
+ * resources and closing and pending connections.
+ */
 int
 server_destroy(server_t* server);
+
+/**
+ * Instantiates a new server
+ */
+server_t*
+server_create(connection_handler handler);
 
 /**
  * Accepts connections and processes them using the handler specfied
