@@ -47,6 +47,8 @@ server_serve_non_blocking(server_t* server)
 		return err;
 	}
 
+	server->epoll_fd = epoll_fd;
+
 	// Interest in particular file descriptors is then
 	// registered via epoll_ctl(2) - adds the file descriptor to
 	// the epoll set.
@@ -82,17 +84,20 @@ server_serve_non_blocking(server_t* server)
 		if (fds_len == -1) {
 			perror("epoll_wait");
 			printf("failed to wait for epoll events");
-			// TODO close epoll_fd?
+			close(epoll_fd);
 			return -1;
 		}
 
 		for (int i = 0; i < fds_len; i++) {
+			// Check the case where either:
+			// - an error occurred
+			// - we received a hangup from the other side
+			// - the event is not for reading from a socket or
+			// accepting
+			//   connections.
 			if ((events[i].events & EPOLLERR) ||
 			    (events[i].events & EPOLLHUP) ||
 			    (!(events[i].events & EPOLLIN))) {
-				printf("Unexpected epoll error\n");
-				// TODO check if this `close` will remove the fd
-				//      from the epoll set
 				close(events[i].data.fd);
 				continue;
 			}
@@ -105,50 +110,71 @@ server_serve_non_blocking(server_t* server)
 			// much
 			// as we can until an EAGAIN or EWOULDBLOCK is reached.
 			if (events[i].data.fd == server->listen_fd) {
-				for (;;) {
-
-					struct sockaddr in_addr;
-					socklen_t       in_len;
-					int             infd;
-
-					in_len = sizeof in_addr;
-					infd   = accept(
-					  server->listen_fd, &in_addr, &in_len);
-					if (infd == -1) {
-						// All incoming
-						// connections
-						// have been processed.
-						if ((errno == EAGAIN) ||
-						    (errno == EWOULDBLOCK)) {
-							break;
-						}
-
-						perror("accept");
-						printf("failed unexpectedly "
-						       "while accepting "
-						       "connection");
-						return -1;
-					}
-
-					// Make the incoming socket non-blocking
-					// and add it to the list of fds to
-					// monitor.
-					_make_socket_nonblocking(infd);
-
-					event.data.fd = infd;
-					event.events  = EPOLLIN | EPOLLET;
-					err           = epoll_ctl(epoll_fd,
-					                EPOLL_CTL_ADD,
-					                infd,
-					                &event);
-					if (err == -1) {
-						perror("epoll_ctl");
-						printf("couldn't add client "
-						       "socket to epoll set\n");
-						return -1;
-					}
+				err = server_accept_all_nonblocking(server);
+				if (err) {
+					printf("failed to accept "
+					       "connection\n");
+					return err;
 				}
 			}
+
+			// process the other file descriptors that are not from
+			// the server - i.e., are from client connections.
+			else {
+				connection_t conn = {.client_fd =
+					               events[i].data.fd };
+
+				// consume everything from the socket
+
+				// TODO handle errors somehow
+				server->connection_handler(&conn);
+			}
+		}
+	}
+
+	return 0;
+}
+
+int
+server_accept_all_nonblocking(server_t* server)
+{
+	struct sockaddr    in_addr;
+	struct epoll_event event  = { 0 };
+	socklen_t          in_len = sizeof in_addr;
+	int                infd;
+	int                err;
+
+	while (1) {
+		infd = accept(server->listen_fd, &in_addr, &in_len);
+		if (infd == -1) {
+			// All incoming
+			// connections
+			// have been processed.
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+				return 0;
+			}
+
+			perror("accept");
+			printf("failed unexpectedly "
+			       "while accepting "
+			       "connection");
+			return -1;
+		}
+
+		// Make the incoming socket non-blocking
+		_make_socket_nonblocking(infd);
+
+		// TODO instead of putting just the fd, put a connection_t
+		event.data.fd = infd;
+		event.events  = EPOLLIN | EPOLLET;
+
+		// add the non-blocking socket to the epoll set
+		err = epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, infd, &event);
+		if (err == -1) {
+			perror("epoll_ctl");
+			printf("couldn't add client "
+			       "socket to epoll set\n");
+			return -1;
 		}
 	}
 
@@ -158,68 +184,7 @@ server_serve_non_blocking(server_t* server)
 int
 server_serve(server_t* server)
 {
-	int err = 0;
-
-	for (;;) {
-		err = server_accept(server);
-		if (err) {
-			printf("failed accepting connection\n");
-			return err;
-		}
-	}
-
-	return err;
-}
-
-int
-server_accept(server_t* server)
-{
-	int                err = 0;
-	int                conn_fd;
-	socklen_t          client_len;
-	struct sockaddr_in client_addr;
-
-	client_len = sizeof(client_addr);
-
-	// accept(2) extracts the first connection request on the queue
-	// of pending connections for the listening socket, sockfd,
-	// creates a new connected socket, and returns a new file descriptor
-	// referring to that socket.
-	//
-	// ps.:  the original socket sockfd is unaffected by this call.
-	err =
-	  (conn_fd = accept(
-	     server->listen_fd, (struct sockaddr*)&client_addr, &client_len));
-	if (err == -1) {
-		perror("accept");
-		printf("failed accepting connection\n");
-		return err;
-	}
-
-	connection_t conn = {
-		.client_fd = conn_fd,
-	};
-
-	if (server->connection_handler == NULL) {
-		err = -1;
-		printf("connection_handler must be specified\n");
-		return err;
-	}
-
-	err = server->connection_handler(&conn);
-	if (err) {
-		printf("failed to handle connection\n");
-		return err;
-	}
-
-	err = close(conn_fd);
-	if (err == -1) {
-		perror("close");
-		printf("failed to close connection\n");
-		return err;
-	}
-
-	return err;
+	return server_serve_non_blocking(server);
 }
 
 int
@@ -275,15 +240,13 @@ server_listen(server_t* server)
 		return err;
 	}
 
-	if (server->non_blocking) {
-		// Makes the server socket non-blocking such that calls that
-		// would block return a -1 with EAGAIN or EWOULDBLOCK and
-		// return immediately.
-		err = _make_socket_nonblocking(server->listen_fd);
-		if (err) {
-			printf("failed to make server socket nonblocking\n");
-			return err;
-		}
+	// Makes the server socket non-blocking such that calls that
+	// would block return a -1 with EAGAIN or EWOULDBLOCK and
+	// return immediately.
+	err = _make_socket_nonblocking(server->listen_fd);
+	if (err) {
+		printf("failed to make server socket nonblocking\n");
+		return err;
 	}
 
 	// listen() marks the socket referred to by sockfd as a

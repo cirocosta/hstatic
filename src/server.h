@@ -29,9 +29,9 @@
  * Encapsulates the properties of the server.
  */
 typedef struct server {
-	// Defines whether the server is meant to perform
-	// all operations in a non-blocking manner.
-	bool non_blocking;
+	// epoll_fd is the epoll file descriptor retrieved from
+	// an `epoll_creaet` op.
+	int epoll_fd;
 
 	// file descriptor of the socket in passive
 	// mode to wait for connections.
@@ -42,17 +42,12 @@ typedef struct server {
 	connection_handler connection_handler;
 } server_t;
 
-/**
- * Accepts new connections and then prints `Hello World` to
- * them.
- *
- * Given that a `server_t` has already been initialized,
- * it accepts a connection by `accept`ing on that socket.
- *
- * Note.: this method blocks until a single client is connected.
- */
+// TODO implement
 int
-server_accept(server_t* server);
+server_destroy(server_t* server);
+
+int
+server_accept_all_nonblocking(server_t* server);
 
 /**
  * Accepts connections and processes them using the handler specfied

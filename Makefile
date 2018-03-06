@@ -21,14 +21,6 @@ ifneq ($(HSTATIC_EPOLL_EVENTS),)
 CFLAGS += -DHSTATIC_EPOLL_EVENTS=$(HSTATIC_EPOLL_EVENTS)
 endif
 
-# HSTATIC_NOBLOCKING defines whether nonblocking mode should be
-# activated.
-HSTATIC_NONBLOCKING =
-ifneq ($(HSTATIC_NONBLOCKING),)
-CFLAGS += -DHSTATIC_NONBLOCKING
-endif
-
-
 
 # Internal varriables.
 #
