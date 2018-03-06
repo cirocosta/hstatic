@@ -29,14 +29,77 @@ _make_socket_nonblocking(int socket)
 	return 0;
 }
 
+/**
+ * Accepts all incoming established TCP connections
+ * until a blocking `accept(2)` would occur.
+ */
 int
-server_serve_non_blocking(server_t* server)
+_accept_all(server_t* server)
+{
+	struct sockaddr    in_addr;
+	struct epoll_event event  = { 0 };
+	socklen_t          in_len = sizeof in_addr;
+	connection_t*      conn;
+	int                in_fd;
+	int                err;
+
+	while (1) {
+		in_fd = accept(server->listen_fd, &in_addr, &in_len);
+		if (in_fd == -1) {
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+				return 0;
+			}
+
+			perror("accept");
+			printf("failed unexpectedly while accepting "
+			       "connection");
+			return -1;
+		}
+
+		// Make the incoming socket non-blocking
+		_make_socket_nonblocking(in_fd);
+
+		conn = connection_create(CONNECTION_TYPE_CLIENT);
+		if (conn == NULL) {
+			printf("failed to create connection struct\n");
+			return -1;
+		}
+
+		conn->fd = in_fd;
+
+		// TODO instead of putting just the fd, put a connection_t
+		event.data.ptr = conn;
+		event.events   = EPOLLIN | EPOLLET;
+
+		// add the non-blocking socket to the epoll set
+		err = epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, in_fd, &event);
+		if (err == -1) {
+			perror("epoll_ctl");
+			printf("couldn't add client socket to epoll set\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int
+server_serve(server_t* server)
 {
 	int epoll_fd;
 	int err = 0;
 
 	struct epoll_event event = { 0 };
 	struct epoll_event events[HSTATIC_EPOLL_EVENTS];
+	connection_t*      server_connection =
+	  connection_create(CONNECTION_TYPE_SERVER);
+
+	if (server_connection == NULL) {
+		printf("failed to instantiate memory for server connection\n");
+		return -1;
+	}
+
+	server_connection->fd = server->listen_fd;
 
 	// creates a new epoll instance and returns a file
 	// descriptor referring to that instance.
@@ -57,8 +120,8 @@ server_serve_non_blocking(server_t* server)
 	// on the epoll instance referred to by the file descriptor
 	// epoll_fd and associate the event `event` with the internal file
 	// linked to epoll_fd.
-	event.data.fd = server->listen_fd;
-	event.events  = EPOLLIN | EPOLLET;
+	event.data.ptr = server_connection;
+	event.events   = EPOLLIN | EPOLLET;
 
 	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->listen_fd, &event);
 	if (err == -1) {
@@ -98,9 +161,11 @@ server_serve_non_blocking(server_t* server)
 			if ((events[i].events & EPOLLERR) ||
 			    (events[i].events & EPOLLHUP) ||
 			    (!(events[i].events & EPOLLIN))) {
-				close(events[i].data.fd);
+				connection_destroy(events[i].data.ptr);
 				continue;
 			}
+
+			connection_t* event_conn = events[i].data.ptr;
 
 			// If we're getting a notification of IO ready in our
 			// server listener fd, then that means we have at least
@@ -109,82 +174,22 @@ server_serve_non_blocking(server_t* server)
 			// To make sure we accept them all, try to accept as
 			// much
 			// as we can until an EAGAIN or EWOULDBLOCK is reached.
-			if (events[i].data.fd == server->listen_fd) {
-				err = server_accept_all_nonblocking(server);
+			if (event_conn->type == CONNECTION_TYPE_SERVER) {
+				err = _accept_all(server);
 				if (err) {
 					printf("failed to accept "
 					       "connection\n");
 					return err;
 				}
+
+				continue;
 			}
 
-			// process the other file descriptors that are not from
-			// the server - i.e., are from client connections.
-			else {
-				connection_t conn = {.client_fd =
-					               events[i].data.fd };
-
-				// consume everything from the socket
-
-				// TODO handle errors somehow
-				server->connection_handler(&conn);
-			}
+			server->connection_handler(events[i].data.ptr);
 		}
 	}
 
 	return 0;
-}
-
-int
-server_accept_all_nonblocking(server_t* server)
-{
-	struct sockaddr    in_addr;
-	struct epoll_event event  = { 0 };
-	socklen_t          in_len = sizeof in_addr;
-	int                infd;
-	int                err;
-
-	while (1) {
-		infd = accept(server->listen_fd, &in_addr, &in_len);
-		if (infd == -1) {
-			// All incoming
-			// connections
-			// have been processed.
-			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-				return 0;
-			}
-
-			perror("accept");
-			printf("failed unexpectedly "
-			       "while accepting "
-			       "connection");
-			return -1;
-		}
-
-		// Make the incoming socket non-blocking
-		_make_socket_nonblocking(infd);
-
-		// TODO instead of putting just the fd, put a connection_t
-		event.data.fd = infd;
-		event.events  = EPOLLIN | EPOLLET;
-
-		// add the non-blocking socket to the epoll set
-		err = epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, infd, &event);
-		if (err == -1) {
-			perror("epoll_ctl");
-			printf("couldn't add client "
-			       "socket to epoll set\n");
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-int
-server_serve(server_t* server)
-{
-	return server_serve_non_blocking(server);
 }
 
 int

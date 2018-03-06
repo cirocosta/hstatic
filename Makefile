@@ -1,6 +1,16 @@
 CC ?= gcc
 CFLAGS := -std=gnu99
 
+# Debug adds debug variables to the compilation process
+# such that we can properly debug the running application.
+DEBUG =
+ifneq ($(DEBUG),)
+CFLAGS += -g
+CFLAGS += -O0
+else
+CFLAGS += -O2
+endif
+
 # HSTATIC_PORT defines the port that the server should
 # listen to.
 #
@@ -28,11 +38,14 @@ endif
 # found under `./src`.
 SRCS := $(shell find ./src/*.c)
 
-#
 # TESTS contains the list of all `.c` sources
 # found under `./tests` that are meant for
 # testing.
 TESTS := $(shell find ./tests/*.c)
+
+# FUNCTIONAL contains a list of all functional
+# tests to be executed.
+FUNCTIONAL := $(shell find ./functional/*.sh)
 
 
 
@@ -60,10 +73,15 @@ clean:
 # Builds the test binaries under `./tests` and then
 # executes them.
 test: $(TESTS)
-	@for test in $(TESTS); do \
+	@for test in $^; do \
 		$(CC) $(CFLAGS) $(SRCS) -g $$test -o $$test.out ; \
 		$$test.out ; \
 	done
 
+functional: $(FUNCTIONAL)
+	@for test in $^; do \
+		./$$test ; \
+	done
 
-.PHONY: build fmt clean test
+
+.PHONY: build fmt clean test functional

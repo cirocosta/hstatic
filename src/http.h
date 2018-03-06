@@ -2,8 +2,11 @@
 #define __HTTP_H
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "./connection.h"
 
 typedef enum http_error {
 	HTTP_ERROR_NONE,
@@ -40,5 +43,12 @@ typedef struct http_request {
  */
 int
 http_parse_request(http_request_t* dst, char req[], size_t n);
+
+/**
+ * Handles incoming connections, parsing the content of
+ * the requests as HTTP messages.
+ */
+int
+http_handler(connection_t* conn);
 
 #endif

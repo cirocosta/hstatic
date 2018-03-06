@@ -46,9 +46,6 @@ typedef struct server {
 int
 server_destroy(server_t* server);
 
-int
-server_accept_all_nonblocking(server_t* server);
-
 /**
  * Accepts connections and processes them using the handler specfied
  * in the server struct.
