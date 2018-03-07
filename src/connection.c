@@ -35,6 +35,5 @@ connection_destroy(connection_t* conn)
 		}
 	}
 
-	free(conn);
 	return 0;
 }

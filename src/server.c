@@ -43,6 +43,8 @@ server_destroy(server_t* server)
 			return err;
 		}
 
+		free(server->conn);
+
 		server->conn = NULL;
 	}
 
@@ -175,6 +177,8 @@ server_serve(server_t* server)
 		}
 
 		for (int i = 0; i < fds_len; i++) {
+			connection_t* event_conn = events[i].data.ptr;
+
 			// Check the case where either:
 			// - an error occurred
 			// - we received a hangup from the other side
@@ -184,11 +188,16 @@ server_serve(server_t* server)
 			if ((events[i].events & EPOLLERR) ||
 			    (events[i].events & EPOLLHUP) ||
 			    (!(events[i].events & EPOLLIN))) {
-				connection_destroy(events[i].data.ptr);
+				err = connection_destroy(event_conn);
+				if (err) {
+					printf(
+					  "failed to destroy connection\n");
+					return -1;
+				}
+
+				free(events[i].data.ptr);
 				continue;
 			}
-
-			connection_t* event_conn = events[i].data.ptr;
 
 			// If we're getting a notification of IO ready in our
 			// server listener fd, then that means we have at least
