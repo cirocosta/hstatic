@@ -1,5 +1,5 @@
 CC ?= gcc
-CFLAGS := -std=gnu99
+CFLAGS := -std=gnu99 -D_GNU_SOURCE
 
 # Debug adds debug variables to the compilation process
 # such that we can properly debug the running application.

@@ -1,6 +1,9 @@
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include <sys/uio.h>
 
 /**
  * Creates a file descriptor via `pipe` using the contents
@@ -28,9 +31,15 @@ create_mocked_fd_from_buff(char* buf, int len)
 			printf("failed to fork process");
 			return -1;
 		case 0:
-			for (int written = 0; len > written;)
-				written += write(
-				  pipe_fds[1], buf + written, len - written);
+			for (int written = 0; len > written;) {
+				struct iovec iov = {
+					.iov_base = buf + written,
+					.iov_len  = len - written,
+				};
+
+				written +=
+				  vmsplice(pipe_fds[1], &iov, 1, SPLICE_F_GIFT);
+			}
 			exit(0);
 		default:
 			close(pipe_fds[1]);
