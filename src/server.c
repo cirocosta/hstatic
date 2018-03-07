@@ -42,6 +42,8 @@ server_destroy(server_t* server)
 			printf("failed to destroy server connection\n");
 			return err;
 		}
+
+		server->conn = NULL;
 	}
 
 	if (server->epoll_fd != -1) {
@@ -51,37 +53,8 @@ server_destroy(server_t* server)
 			printf("failed to close server epoll fd\n");
 			return err;
 		}
-	}
 
-	free(server);
-
-	return -1;
-}
-
-/**
- * Turns a socket into non-blocking by changing
- * its flags using `fcntl`.
- */
-int
-_make_socket_nonblocking(int socket)
-{
-	int err = 0;
-	int flags;
-
-	err = (flags = fcntl(socket, F_GETFL, 0));
-	if (err == -1) {
-		perror("fcntl");
-		printf("failed to retrieve socket flags\n");
-		return -1;
-	}
-
-	flags |= O_NONBLOCK;
-
-	err = fcntl(socket, F_SETFL, flags);
-	if (err == -1) {
-		perror("fcntl");
-		printf("failed to set socket flags\n");
-		return -1;
+		server->epoll_fd = -1;
 	}
 
 	return 0;
@@ -115,7 +88,7 @@ _accept_all(server_t* server)
 		}
 
 		// Make the incoming socket non-blocking
-		_make_socket_nonblocking(in_fd);
+		fd_make_nonblocking(in_fd);
 
 		conn = connection_create(CONNECTION_TYPE_CLIENT);
 		if (conn == NULL) {
@@ -171,7 +144,8 @@ server_serve(server_t* server)
 	event.data.ptr = server->conn;
 	event.events   = EPOLLIN | EPOLLET;
 
-	err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->conn->fd, &event);
+	err =
+	  epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, server->conn->fd, &event);
 	if (err == -1) {
 		perror("epoll_ctl");
 		printf("failed to add listen socket to epoll event");
@@ -179,8 +153,6 @@ server_serve(server_t* server)
 	}
 
 	for (;;) {
-		int fds_len;
-
 		// Wait indefintely (-1) until there's a file descriptor ready
 		// to proceed with IO in a non-blocking manner.
 		//
@@ -190,12 +162,15 @@ server_serve(server_t* server)
 		// `events` array gets populated with the events, which allows
 		// us
 		// to retrieve these events by simply looping over the array.
-		fds_len =
-		  epoll_wait(epoll_fd, events, HSTATIC_EPOLL_EVENTS, -1);
+		int fds_len = epoll_wait(
+		  server->epoll_fd, events, HSTATIC_EPOLL_EVENTS, -1);
 		if (fds_len == -1) {
+			if (errno == EINTR) {
+				return 0;
+			}
+
 			perror("epoll_wait");
 			printf("failed to wait for epoll events");
-			close(epoll_fd);
 			return -1;
 		}
 
@@ -297,7 +272,7 @@ server_listen(server_t* server)
 	// Makes the server socket non-blocking such that calls that
 	// would block return a -1 with EAGAIN or EWOULDBLOCK and
 	// return immediately.
-	err = _make_socket_nonblocking(server->conn->fd);
+	err = fd_make_nonblocking(server->conn->fd);
 	if (err) {
 		printf("failed to make server socket nonblocking\n");
 		return err;

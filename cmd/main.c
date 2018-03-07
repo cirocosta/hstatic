@@ -67,5 +67,8 @@ main()
 		return 1;
 	}
 
+	free(server);
+	server = NULL;
+
 	return 0;
 }
