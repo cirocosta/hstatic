@@ -3,6 +3,7 @@
 
 #include "./connection.h"
 #include "./http.h"
+#include "./tokenizer.h"
 
 #define HSTATIC_HTTP_PARSER_BUFFER_SIZE 4096
 
@@ -111,5 +112,18 @@ http_parser_try_fill_buffer(http_parser_t* parser);
  */
 int
 http_parser_try_get_token(http_parser_t* parser);
+
+/**
+ * Tries to move the state machine by parsing what's in the
+ * internal buffer of the parser.
+ *
+ * 1. tries to fill the internal buffer
+ * 2. loop:
+ *      - try_get_token (if can't, aborts)
+ *      - updates the parsing state
+ *
+ */
+int
+http_parser_try_parse(http_parser_t* parser);
 
 #endif

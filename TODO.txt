@@ -1,0 +1,10 @@
+07 mar 2018
+
+ -      implement a circular buffer such that the
+        we can refill the buffer without allocating
+        anything else.
+
+        ps.: we must also include some checks that
+             would force a `fail` if a token can't
+             be retrieved in `BUFSIZE`.
+

@@ -55,17 +55,82 @@ http_parser_try_fill_buffer(http_parser_t* parser)
 int
 http_parser_try_parse(http_parser_t* parser)
 {
-	(void)parser;
+	int    n          = 0;
+	size_t buf_offset = 0;
+	size_t read       = 0;
+	char*  token;
 
-	switch (parser->state) {
-		case HTTP_PARSER_STATE_REQUEST_LINE_METHOD:
-			break;
-		case HTTP_PARSER_STATE_REQUEST_LINE_PATH:
-			break;
-		case HTTP_PARSER_STATE_REQUEST_LINE_PROTOCOL:
-			break;
-		default:
-			break;
+	while (1) {
+		read += (n + buf_offset);
+
+		n = tokenizer_get_token(
+		  parser->buf + read, parser->buf_len - read, &buf_offset);
+		if (n == -1) {
+			printf(
+			  "unexpected error while retrieving token from buf\n");
+			return -1;
+		}
+
+		if (n == 0) {
+			return 0;
+		}
+
+		token = parser->buf + read + buf_offset;
+
+		switch (parser->state) {
+			case HTTP_PARSER_STATE_NEW:
+				if (n == 3 && strncmp(token, "GET", 3) != 0) {
+					printf(
+					  "didn't detect a valid method\n");
+					return -1;
+				}
+
+				parser->state =
+				  HTTP_PARSER_STATE_REQUEST_LINE_METHOD;
+				parser->req.method = HTTP_METHOD_GET;
+
+				printf("- METHOD FOUND\n");
+				break;
+
+			case HTTP_PARSER_STATE_REQUEST_LINE_METHOD:
+				if (token[0] != '/') {
+					printf("didn't detect a proper path\n");
+					return -1;
+				}
+
+				parser->req.path     = token;
+				parser->req.path_len = n;
+				parser->state =
+				  HTTP_PARSER_STATE_REQUEST_LINE_PATH;
+
+				printf("- PATH FOUND\n");
+
+				break;
+
+			case HTTP_PARSER_STATE_REQUEST_LINE_PATH:
+				if (n != 10 ||
+				    strncmp(token, "HTTP/1.1\r\n", 10) != 0) {
+					printf("didn't detect a proper "
+					       "protocol - %s\n",
+					       token);
+					return -1;
+				}
+
+				parser->state = HTTP_PARSER_STATE_DONE;
+				break;
+
+			case HTTP_PARSER_STATE_REQUEST_LINE_PROTOCOL:
+				// check if we're starting a header section
+				// ...
+				break;
+
+			case HTTP_PARSER_STATE_DONE:
+				return 0;
+
+			default:
+				printf("unexpected state");
+				return -1;
+		}
 	}
 
 	return 0;
