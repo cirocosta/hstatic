@@ -78,6 +78,10 @@ test: $(TESTS)
 		$$test.out ; \
 	done
 
+# Runs the functional tests under `./functional`
+# (simple bash scripts).
+#
+# - it expects `hstatic` to have already been built.
 functional: $(FUNCTIONAL)
 	@for test in $^; do \
 		./$$test ; \

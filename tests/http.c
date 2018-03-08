@@ -76,8 +76,8 @@ test_case_t test_cases[] = {
 	},
 };
 
-void
-test_http_parse_request()
+int
+main()
 {
 	int number_of_testcases = sizeof(test_cases) / sizeof(test_cases[0]);
 	int ret                 = 0;
@@ -93,11 +93,6 @@ test_http_parse_request()
 		assert(ret == tc.expected_response);
 		assert(http_request_equals(&tc.expected, &tc.actual));
 	}
-}
 
-int
-main()
-{
-	test_http_parse_request();
 	return 0;
 }

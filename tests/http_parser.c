@@ -1,69 +1,35 @@
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <assert.h>
 
-#include <sys/uio.h>
+#include "../src/http_parser.h"
+#include "./util.h"
 
-/**
- * Creates a file descriptor via `pipe` using the contents
- * from a buffer such that we can simulate reading from a
- * fd.
- */
-int
-create_mocked_fd_from_buff(char* buf, int len)
+void
+test_fills_buffer_completely()
 {
-	int pipe_fds[2];
-	int pid;
-	int err;
+	char           buf[] = "abc";
+	http_parser_t* parser;
+	int            fd;
+	int            err;
 
-	err = pipe(pipe_fds);
-	if (err == -1) {
-		perror("pipe");
-		printf("failed to create pipe\n");
-		return -1;
-	}
+	fd = create_mocked_fd_from_buff(buf, sizeof(buf) - 1);
+	assert(fd != -1);
 
-	pid = fork();
-	switch (pid) {
-		case -1:
-			perror("fork");
-			printf("failed to fork process");
-			return -1;
-		case 0:
-			for (int written = 0; len > written;) {
-				struct iovec iov = {
-					.iov_base = buf + written,
-					.iov_len  = len - written,
-				};
+	parser = http_parser_create(&((connection_t){
+	  .fd = fd,
+	}));
+	assert(parser != NULL);
 
-				written +=
-				  vmsplice(pipe_fds[1], &iov, 1, SPLICE_F_GIFT);
-			}
-			exit(0);
-		default:
-			close(pipe_fds[1]);
-			break;
-	}
+	err = http_parser_try_fill_buffer(parser);
+	assert(err == 0);
 
-	return pipe_fds[0];
+	assert(parser->buf_len == 3);
+	assert(strncmp(parser->buf, buf, 3) == 0);
 }
 
 int
 main()
 {
-	int  fd = create_mocked_fd_from_buff("abc", 3);
-	int  n;
-	char buf[3];
-
-	while (1) {
-		n = read(fd, buf, 3);
-		if (!n) {
-			break;
-		}
-	}
-
-	printf("READ:%s\n", buf);
+	test_fills_buffer_completely();
 
 	return 0;
 }
