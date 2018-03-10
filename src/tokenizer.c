@@ -7,14 +7,14 @@ tokenizer_get_token(char* buf, size_t buf_len, size_t* offset)
 	size_t ndx_end   = 0;
 
 	// remove all the spaces
-	while (ndx_start < buf_len && buf[ndx_start] == ' ') {
+	while (ndx_start < buf_len && isspace(buf[ndx_start])) {
 		ndx_start++;
 		ndx_end++;
 	}
 
 	// count the non-spaces
 	while (ndx_end < buf_len) {
-		if (buf[ndx_end] == ' ') {
+		if (isspace(buf[ndx_end])) {
 			break;
 		}
 

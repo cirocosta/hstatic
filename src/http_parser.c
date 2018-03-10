@@ -108,8 +108,8 @@ http_parser_try_parse(http_parser_t* parser)
 				break;
 
 			case HTTP_PARSER_STATE_REQUEST_LINE_PATH:
-				if (n != 10 ||
-				    strncmp(token, "HTTP/1.1\r\n", 10) != 0) {
+				if (n != 8 ||
+				    strncmp(token, "HTTP/1.1", 8) != 0) {
 					printf("didn't detect a proper "
 					       "protocol - %s\n",
 					       token);
@@ -117,11 +117,19 @@ http_parser_try_parse(http_parser_t* parser)
 				}
 
 				parser->state = HTTP_PARSER_STATE_DONE;
+				// parser->state =
+				// HTTP_PARSER_STATE_REQUEST_LINE_PROTOCOL;
 				break;
 
 			case HTTP_PARSER_STATE_REQUEST_LINE_PROTOCOL:
 				// check if we're starting a header section
 				// ...
+				break;
+
+			case HTTP_PARSER_STATE_HEADER_KEY:
+				break;
+
+			case HTTP_PARSER_STATE_HEADER_VALUE:
 				break;
 
 			case HTTP_PARSER_STATE_DONE:

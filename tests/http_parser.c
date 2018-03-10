@@ -27,12 +27,12 @@ test_fills_buffer_completely()
 }
 
 void
-test_parses_method()
+test_parses_request()
 {
-	char           buf[] = "GET / HTTP/1.1\r\n";
-	http_parser_t* parser;
 	int            fd;
 	int            err;
+	http_parser_t* parser;
+	char           buf[] = "GET / HTTP/1.1\r\n";
 
 	fd = create_mocked_fd_from_buff(buf, sizeof(buf) - 1);
 	assert(fd != -1);
@@ -57,7 +57,7 @@ int
 main()
 {
 	test_fills_buffer_completely();
-	test_parses_method();
+	test_parses_request();
 
 	return 0;
 }

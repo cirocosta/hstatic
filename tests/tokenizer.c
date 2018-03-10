@@ -30,6 +30,18 @@ test_case_t test_cases[] = {
 	  .expected_buf    = "",
 	  .expected_offset = 3,
 	},
+	{
+	  .description     = "case4",
+	  .buf             = "a\r\nb",
+	  .expected_buf    = "a",
+	  .expected_offset = 0,
+	},
+	{
+	  .description     = "case5",
+	  .buf             = "\r\nbc\r\n",
+	  .expected_buf    = "bc",
+	  .expected_offset = 2,
+	},
 };
 
 int
