@@ -32,19 +32,6 @@ typedef struct http_request {
 } http_request_t;
 
 /**
- * Parses an HTTP request.
- *
- * @param dst   struct that will hold the informations
- *              regarding the http request
- *
- * @param req   bytes from the request to parse
- * @param n     size of the `req` line.
- * @return      whether it succeeded or not.
- */
-int
-http_parse_request(http_request_t* dst, char req[], size_t n);
-
-/**
  * Handles incoming connections, parsing the content of
  * the requests as HTTP messages.
  */
