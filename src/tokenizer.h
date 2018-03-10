@@ -5,6 +5,12 @@
 #include <stdlib.h>
 
 /**
+ * Verifies whether the character can be part
+ * of a token or not.
+ */
+typedef int (*tokenizer_checker)(int);
+
+/**
  * Looks up for a token in `buf` of size `len`.
  *
  * It returns the start of the token in `buf` in the offset
@@ -23,6 +29,21 @@
  *      '   '   --> offset=buf+0; ret=0
  */
 int
-tokenizer_get_token(char* buf, size_t buf_len, size_t* offset);
+tokenizer_get_token(char*             buf,
+                    size_t            buf_len,
+                    size_t*           offset,
+                    tokenizer_checker checker);
+
+static int
+tokenizer_checker_iscolon(int c)
+{
+	return c == ':';
+}
+
+static int
+tokenizer_checker_iscrlf(int c)
+{
+	return c == '\r' || c == '\n';
+}
 
 #endif

@@ -55,16 +55,19 @@ http_parser_try_fill_buffer(http_parser_t* parser)
 int
 http_parser_try_parse(http_parser_t* parser)
 {
-	int    n          = 0;
-	size_t buf_offset = 0;
-	size_t read       = 0;
-	char*  token;
+	int               n          = 0;
+	size_t            buf_offset = 0;
+	size_t            read       = 0;
+	char*             token;
+	tokenizer_checker tokenizer_checker = isspace;
 
 	while (1) {
 		read += (n + buf_offset);
 
-		n = tokenizer_get_token(
-		  parser->buf + read, parser->buf_len - read, &buf_offset);
+		n = tokenizer_get_token(parser->buf + read,
+		                        parser->buf_len - read,
+		                        &buf_offset,
+		                        tokenizer_checker);
 		if (n == -1) {
 			printf(
 			  "unexpected error while retrieving token from buf\n");
@@ -76,6 +79,8 @@ http_parser_try_parse(http_parser_t* parser)
 		}
 
 		token = parser->buf + read + buf_offset;
+		printf("token=%.*s\n", n, token);
+		printf("n=%d\n", n);
 
 		switch (parser->state) {
 			case HTTP_PARSER_STATE_NEW:
@@ -89,7 +94,7 @@ http_parser_try_parse(http_parser_t* parser)
 				  HTTP_PARSER_STATE_REQUEST_LINE_METHOD;
 				parser->req.method = HTTP_METHOD_GET;
 
-				printf("- METHOD FOUND\n");
+				printf("[info] METHOD\n");
 				break;
 
 			case HTTP_PARSER_STATE_REQUEST_LINE_METHOD:
@@ -103,7 +108,7 @@ http_parser_try_parse(http_parser_t* parser)
 				parser->state =
 				  HTTP_PARSER_STATE_REQUEST_LINE_PATH;
 
-				printf("- PATH FOUND\n");
+				printf("[info] PATH\n");
 
 				break;
 
@@ -116,20 +121,58 @@ http_parser_try_parse(http_parser_t* parser)
 					return -1;
 				}
 
-				parser->state = HTTP_PARSER_STATE_DONE;
-				// parser->state =
-				// HTTP_PARSER_STATE_REQUEST_LINE_PROTOCOL;
+				printf("[info] PROTOCOL\n");
+
+				parser->state =
+				  HTTP_PARSER_STATE_REQUEST_LINE_PROTOCOL;
+				tokenizer_checker = tokenizer_checker_iscolon;
+
 				break;
 
 			case HTTP_PARSER_STATE_REQUEST_LINE_PROTOCOL:
-				// check if we're starting a header section
-				// ...
+			case HTTP_PARSER_STATE_HEADER_VALUE:
+				printf("[info] HEADER KEY\n");
+
+				if (n < 4) {
+					break;
+				}
+
+				if (token[n - 4] == '\r' &&
+				    token[n - 3] == '\n' &&
+				    token[n - 2] == '\r' &&
+				    token[n - 1] == '\n') {
+					parser->state = HTTP_PARSER_STATE_DONE;
+					break;
+				}
+
+				parser->state = HTTP_PARSER_STATE_HEADER_KEY;
+				tokenizer_checker = tokenizer_checker_iscrlf;
+
 				break;
 
 			case HTTP_PARSER_STATE_HEADER_KEY:
-				break;
+				// we just got the key of the header (`Host:`)
 
-			case HTTP_PARSER_STATE_HEADER_VALUE:
+				printf("[info] HEADER VALUE\n");
+
+				parser->state = HTTP_PARSER_STATE_HEADER_VALUE;
+				tokenizer_checker = tokenizer_checker_iscolon;
+
+				// if the last four characters are `\r\n\r\n`,
+				// then
+				// we finish the header section.
+				if (n < 4) {
+					break;
+				}
+
+				if (token[n - 4] == '\r' &&
+				    token[n - 3] == '\n' &&
+				    token[n - 2] == '\r' &&
+				    token[n - 1] == '\n') {
+					parser->state = HTTP_PARSER_STATE_DONE;
+					break;
+				}
+
 				break;
 
 			case HTTP_PARSER_STATE_DONE:

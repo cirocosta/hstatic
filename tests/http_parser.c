@@ -32,7 +32,10 @@ test_parses_request()
 	int            fd;
 	int            err;
 	http_parser_t* parser;
-	char           buf[] = "GET / HTTP/1.1\r\n";
+	char           buf[] = "GET / HTTP/1.1\r\n"
+	             "Host: test.com\r\n"
+	             "Blabla: hehe\r\n"
+	             "\r\n";
 
 	fd = create_mocked_fd_from_buff(buf, sizeof(buf) - 1);
 	assert(fd != -1);
